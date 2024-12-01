@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from math import dist
 
 # Paths to data files
 path_eyelink_data = r"data\mono250.asc"
@@ -15,7 +16,7 @@ start_event = "START"
 # Allowed difference marigin between 
 # eyelink timestamp and object detection 
 # timestamp in miliseconds (edit to liking)
-#it's both ways 
+# p.s. it's both ways (future and past) 
 allowed_time_margin = 5
 
 
@@ -56,8 +57,16 @@ def is_inside_box(eye, box):
     return min_x <= eye_x <= max_x and min_y <= eye_y <= max_y
 
 def is_closeby(eye, box):
-    pass
-    # TO DO closest neighbour with taking size on the screen into account
+    # Checks distance from gaze to centre of detected object
+    # if gaze is inside object detection box, this function will
+    # not be called, and the value in df is gonna be set to 0 
+    top_left_x = box[0]
+    top_left_y = box[1]
+    width = box[2]
+    height = box[3]
+    center = (int(width/2 + top_left_x), int(height/2 + top_left_y))
+    distance_from_centre = dist(eye, center)
+    return distance_from_centre
 
 def sync_start_times(filepath, df):
     # Sync of time in object dataframe and eyetracking dataframe
@@ -98,14 +107,43 @@ def sync_frame_time(timestamp_obj, e_df):
 
 
 if __name__ == "__main__":
+    # load datasets
     eye_df = read_eyelink_asc(path_eyelink_data)
     object_df = read_objectdetection(path_object_data)
     print(object_df.head())
     print(eye_df.head())
+    #sync eyelink time in miliseconds
     eye_df = sync_start_times(path_eyelink_data, eye_df)
     print(eye_df.head())
-    test_df = pd.read_csv(r"data\time_sync_test_eye.csv", sep = ",")
-    print(test_df[test_df["sync_time"] == 118])
-    result = sync_frame_time(6, test_df)
-    print(result)
+
+    # for every appearing object check if person is looking
+    looking_at_column = []
+    looking_close_column = []
+    eye_timestamp_id_column = []
+    for row in object_df.itertuples():
+        current_eye = sync_frame_time(row.time, eye_df)
+        if current_eye == -1:
+            looking_at_column.append(None)
+            looking_close_column.append(None)
+            eye_timestamp_id_column.append(None)
+        else:
+            eye_timestamp_id_column.append(int(current_eye[0]))
+            eye_position = [current_eye[1], current_eye[2]]
+            box_position = [row.x, row.y, row.w, row.h]
+            looking = is_inside_box(eye_position, box_position)
+            looking_at_column.append(int(looking))
+            if looking == True:
+                looking_close_column.append(0)
+            else:
+                looking_close = is_closeby(eye_position, box_position)
+                looking_close_column.append(int(looking_close))
+    object_df["looking_at"] = looking_at_column
+    object_df["distance_from_box"] = looking_close_column
+    object_df["eye_time_id"] = eye_timestamp_id_column
+
+object_df.to_csv(r'C:\Users\agata\EyeTrackingAnnotator\data\correlations.txt', sep=',', index=False)
+print('Finished.')
+
+
+
    
