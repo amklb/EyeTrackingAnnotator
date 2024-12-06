@@ -205,7 +205,7 @@ def do_trial(trial):
 
     win = gw.getWindowsWithTitle(GAME_WIN)[0]
     win.activate()
-    obj.main()
+    obj.start_detection()
     # log a message to mark the time at which the initial display came on
     el_tracker.sendMessage("SYNCTIME")
 
