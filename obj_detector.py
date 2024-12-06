@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import win32gui, win32ui, win32con
 from PIL import Image
-from time import sleep
+from time import sleep, time
 import cv2 as cv
 import os
 import random
@@ -129,7 +129,7 @@ class ImageProcessor:
         
         coordinates = self.get_coordinates(outputs, 0.5)
 
-        self.draw_identified_objects(img, coordinates)
+        # self.draw_identified_objects(img, coordinates)
 
         return coordinates
 
@@ -182,36 +182,44 @@ class ImageProcessor:
 
 
 
-# This code is modified by me for desired output
-window_name = ""
-cfg_file_name = r"C:\Users\agata\EyeTrackingAnnotator\yolov4-tiny\yolov4-tiny-custom.cfg"
-weights_file_name = r"C:\Users\agata\EyeTrackingAnnotator\yolov4-tiny\yolov4-tiny-custom_last.weights"
+def start_detection():
+    print("Starting")
+    # This code is modified by me for desired output
+    window_name = ""
+    cfg_file_name = r"C:\Users\agata\EyeTrackingAnnotator\yolov4-tiny\yolov4-tiny-custom.cfg"
+    weights_file_name = r"C:\Users\agata\EyeTrackingAnnotator\yolov4-tiny\yolov4-tiny-custom_last.weights"
 
-wincap = WindowCapture()
-improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
+    wincap = WindowCapture()
+    improc = ImageProcessor(wincap.get_window_size(), cfg_file_name, weights_file_name)
 
-start_date = int(datetime.now().timestamp() * 1000)
-buffer_df = []
- 
-while(True):
-    timestamp_millis = int(datetime.now().timestamp() * 1000) - start_date
-    ss = wincap.get_screenshot()
-        
-    if cv.waitKey(1) == ord('q'):
-        cv.destroyAllWindows()
-        break
+    start_date = int(datetime.now().timestamp() * 1000)
+    buffer_df = []
     
-    coordinates = improc.proccess_image(ss)
-
-    if len(coordinates) > 0:    
-        for i in range(len(coordinates)):
-            coordinates[i]["time"] = timestamp_millis
-            buffer_df.append(coordinates[i])
-        
-        
-    sleep(0.02)
-        
+    t_end = time() + 60 * 5
+    while time() < t_end:
     
-object_df = pd.DataFrame(buffer_df)
-object_df.to_csv(r'C:\Users\agata\EyeTrackingAnnotator\data\data_obj.txt', sep='\t', index=False)
-print('Finished.')
+        timestamp_millis = int(datetime.now().timestamp() * 1000) - start_date
+        ss = wincap.get_screenshot()
+            
+        if cv.waitKey(1) == ord('q'):
+            cv.destroyAllWindows()
+            break
+        
+        coordinates = improc.proccess_image(ss)
+
+        if len(coordinates) > 0:    
+            for i in range(len(coordinates)):
+                coordinates[i]["time"] = timestamp_millis
+                buffer_df.append(coordinates[i])
+            
+            
+        sleep(0.02)
+            
+        
+    object_df = pd.DataFrame(buffer_df)
+    object_df.to_csv(r'C:\Users\agata\EyeTrackingAnnotator\data\data_obj.txt', sep='\t', index=False)
+    print('Finished.')
+
+    
+if __name__ == "__main__":
+    start_detection()
